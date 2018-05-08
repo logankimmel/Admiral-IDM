@@ -29,6 +29,13 @@ type (
 		Password string
 		Submit   string
 	}
+	newUser struct {
+		Username string
+		Password string
+		Confirm  string
+		IsAdmin  string `json:"isAdmin"`
+		Submit   string
+	}
 
 	project struct {
 		DocumentSelfLink string `json:"documentSelfLink"`
@@ -52,7 +59,9 @@ var routes = routeSet{
 	route{"Auth", "POST", "/auth", auth},
 	route{"Admiral Logout", "GET", "/logout", logout},
 	route{"Users", "GET", "/user", listUsers},
-	route{"Delete User", "GET", "/deleteUser/{id}", deleteUser},
+	route{"Delete User", "GET", "/deleteuser/{id}", deleteUser},
+	route{"Create User Form", "GET", "/createuser", createUser},
+	route{"Create User POST", "POST", "/create", create},
 }
 
 func admiralEndpoint() string {
@@ -284,7 +293,6 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	documentLinks := userData.(map[string]interface{})["documentLinks"]
-	fmt.Println(documentLinks)
 	var linkPath string
 	for _, link := range documentLinks.([]interface{}) {
 		linkPath = link.(string)
@@ -309,9 +317,61 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 }
 
+func createUser(w http.ResponseWriter, r *http.Request) {
+	checkSession(w, r)
+	f, _ := ioutil.ReadFile("views/createuser.html")
+	w.WriteHeader(200)
+	fmt.Fprintf(w, "%s", f)
+}
+
+func create(w http.ResponseWriter, r *http.Request) {
+	checkSession(w, r)
+	fData := new(newUser)
+	err := r.ParseForm()
+	if err != nil {
+		fmt.Println("parse error")
+		fmt.Println(err)
+	}
+	decoder := schema.NewDecoder()
+	err = decoder.Decode(fData, r.Form)
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Fprint(w, err)
+		return
+	}
+
+	url := admiralEndpoint() + "/auth/idm/local/principals"
+	client := &http.Client{}
+	jsonData := map[string]string{
+		"email":    fData.Username,
+		"password": fData.Password,
+		"isAdmin":  fData.IsAdmin,
+	}
+	jsonValue, _ := json.Marshal(jsonData)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonValue))
+	if err != nil {
+		fmt.Println("Error creating the request")
+		fmt.Println(err)
+		w.WriteHeader(500)
+		return
+	}
+	for _, cookie := range r.Cookies() {
+		req.AddCookie(cookie)
+	}
+	req.Header.Add("Content-Type", "application/json")
+	response, err := client.Do(req)
+	if err != nil || response.StatusCode != 200 {
+		fmt.Println(err)
+		fmt.Fprint(w, "Error Creating User")
+		w.WriteHeader(500)
+		return
+	}
+	home(w, r)
+}
+
 func main() {
 	router := newRouter()
-	router.PathPrefix("/assets").Handler(http.StripPrefix("/assets", http.FileServer(http.Dir("views/assets/"))))
+	// router.PathPrefix("/assets").Handler(http.StripPrefix("/assets", http.FileServer(http.Dir("views/assets/"))))
 	fmt.Println("Listening on port 8080")
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
