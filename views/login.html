@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Login</title>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+<style>
+h1 {text-align: center}
+img {
+    display: block;
+    margin: 0 auto;
+}
+.center { text-align: center}
+.leftjust {
+    display: inline-block;
+    text-align: left
+}
+input {
+    margin-bottom: .5em;
+    width: 15em;
+}
+
+</style>
+</head>
+<body>
+<h1>Admiral Login</h1>
+<div class="center">
+    <form id="form1" class="leftjust" class="leftjust" method="POST" \
+    action="/auth" >
+        Username: <input type="text" name="username" required><br>
+        Password: <input type="text" name="password" required><br>
+        <br>
+        <input type="submit" name="submit" value="Submit" />
+    </form>
+</div>
+</body>
+</html>
