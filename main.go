@@ -49,12 +49,14 @@ var routes = routeSet{
 	route{"Admiral User Manager", "GET", "/", home},
 	route{"Admiral User Login", "GET", "/login", login},
 	route{"Auth", "POST", "/auth", auth},
+	route{"Admiral Logout", "GET", "/logout", logout},
 	route{"Users", "GET", "/user", listUsers},
 }
 
 func admiralEndpoint() string {
-	if os.Getenv("HTTPS") == "true" {
-		return "https//admiral:8383"
+	admiralEndpoint := os.Getenv("ADMIRAL_ENDPOINT")
+	if admiralEndpoint != "" {
+		return admiralEndpoint
 	}
 	return "http://admiral:8282"
 }
@@ -143,6 +145,22 @@ func login(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "%s", f)
 }
 
+func logout(w http.ResponseWriter, r *http.Request) {
+	url := admiralEndpoint() + "/auth/session"
+	client := &http.Client{}
+	req, _ := http.NewRequest("DELETE", url, nil)
+	for _, cookie := range r.Cookies() {
+		req.AddCookie(cookie)
+	}
+	_, err := client.Do(req)
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Println("Error signing out")
+		return
+	}
+	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+}
+
 func auth(w http.ResponseWriter, r *http.Request) {
 	e := new(creds)
 	err := r.ParseForm()
@@ -191,6 +209,7 @@ func getCookie(creds creds) (string, bool) {
 }
 
 func listUsers(w http.ResponseWriter, r *http.Request) {
+	checkSession(w, r)
 	url := admiralEndpoint() + "/auth/idm/principals?criteria=*&roles=all"
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
