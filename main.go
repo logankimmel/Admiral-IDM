@@ -29,6 +29,7 @@ type (
 )
 
 var routes = routeSet{
+	route{"Admiral User Manager", "GET", "/", home},
 	route{"Admiral User Login", "GET", "/login", login},
 	route{"Auth", "POST", "/auth", auth},
 }
@@ -73,6 +74,47 @@ func logger(inner http.Handler, name string) http.Handler {
 	})
 }
 
+func home(w http.ResponseWriter, r *http.Request) {
+	success, err := checkSession(r)
+	if err != nil {
+		fmt.Println("Error validating session")
+		w.WriteHeader(500)
+		return
+	}
+	if !success {
+		fmt.Println("Session invalid. Redirecting to login")
+		http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
+	} else {
+		fmt.Println("Session valid")
+		f, _ := ioutil.ReadFile("views/index.html")
+		w.WriteHeader(200)
+		fmt.Fprintf(w, "%s", f)
+	}
+}
+
+func checkSession(r *http.Request) (bool, error) {
+	url := admiralEndpoint() + "/auth/session"
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		fmt.Println("Error creating the request")
+		fmt.Println(err)
+		return false, err
+	}
+	for _, cookie := range r.Cookies() {
+		req.AddCookie(cookie)
+	}
+	response, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return false, err
+	}
+	if response.StatusCode == 200 {
+		return true, nil
+	}
+	return false, nil
+}
+
 func login(w http.ResponseWriter, r *http.Request) {
 	f, _ := ioutil.ReadFile("views/login.html")
 	fmt.Fprintf(w, "%s", f)
@@ -93,19 +135,18 @@ func auth(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, err)
 		return
 	}
-	token, success := getToken(*e)
+	token, success := getCookie(*e)
 	if !success {
 		fmt.Println(err)
 		w.WriteHeader(500)
 		fmt.Fprint(w, err)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	fmt.Println(token)
-	w.WriteHeader(200)
+	w.Header().Set("Set-Cookie", token)
+	http.Redirect(w, r, "/", http.StatusMovedPermanently)
 }
 
-func getToken(creds creds) (string, bool) {
+func getCookie(creds creds) (string, bool) {
 	url := admiralEndpoint() + "/core/authn/basic"
 	client := &http.Client{}
 	b := []byte(`{"requestType":"LOGIN"}`)
@@ -122,8 +163,8 @@ func getToken(creds creds) (string, bool) {
 		fmt.Println(err)
 		return "", false
 	}
-	token := response.Header.Get("X-Xenon-Auth-Token")
-	return token, true
+	cookie := response.Header.Get("Set-Cookie")
+	return cookie, true
 }
 
 func main() {
