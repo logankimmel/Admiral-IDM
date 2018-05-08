@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
@@ -51,6 +52,7 @@ var routes = routeSet{
 	route{"Auth", "POST", "/auth", auth},
 	route{"Admiral Logout", "GET", "/logout", logout},
 	route{"Users", "GET", "/user", listUsers},
+	route{"Delete User", "GET", "/deleteUser/{id}", deleteUser},
 }
 
 func admiralEndpoint() string {
@@ -251,6 +253,60 @@ func listUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(200)
 	fmt.Fprintf(w, "%s", b.String())
+}
+
+func deleteUser(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	checkSession(w, r)
+	client := &http.Client{}
+	query := fmt.Sprintf("$filter=id eq '%s'", id)
+	userURL := fmt.Sprintf("%s/auth/idm/local/principals?%s", admiralEndpoint(), url.QueryEscape(query))
+	userReq, err := http.NewRequest("GET", userURL, nil)
+	if err != nil {
+		fmt.Printf("Error unmarshalling userData: %v", err)
+		w.WriteHeader(500)
+		return
+	}
+	for _, cookie := range r.Cookies() {
+		userReq.AddCookie(cookie)
+	}
+	userResponse, err := client.Do(userReq)
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Println("Error getting User")
+		return
+	}
+	temp, _ := ioutil.ReadAll(userResponse.Body)
+	var userData interface{}
+	if err = json.Unmarshal(temp, &userData); err != nil {
+		fmt.Printf("Error unmarshalling userData: %v", err)
+		w.WriteHeader(500)
+		return
+	}
+	documentLinks := userData.(map[string]interface{})["documentLinks"]
+	fmt.Println(documentLinks)
+	var linkPath string
+	for _, link := range documentLinks.([]interface{}) {
+		linkPath = link.(string)
+	}
+
+	url := fmt.Sprintf("%s%s", admiralEndpoint(), linkPath)
+	req, _ := http.NewRequest("DELETE", url, nil)
+	for _, cookie := range r.Cookies() {
+		req.AddCookie(cookie)
+	}
+	response, err := client.Do(req)
+	if err != nil {
+		fmt.Printf("Error removing user: %v", err)
+		w.WriteHeader(500)
+		return
+	}
+	if response.StatusCode != 200 {
+		fmt.Printf("Error removing user: %v", err)
+		w.WriteHeader(500)
+		return
+	}
+	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 }
 
 func main() {
