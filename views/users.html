@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Login</title>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+<style>
+h1 {text-align: center}
+h3 {text-align: center}
+img {
+    display: block;
+    margin: 0 auto;
+}
+.center { text-align: center}
+.leftjust {
+    display: inline-block;
+    text-align: left
+}
+input {
+    margin-bottom: .5em;
+    width: 15em;
+}
+table {
+  margin: auto;
+}
+table, th, td {
+    border: 1px solid black;
+    border-collapse: collapse;
+}
+th, td {
+    padding: 5px;
+}
+th {
+    text-align: left;
+}
+</style>
+</head>
+<body>
+<h1>Admiral Local User Manager</h1>
+<h3><a href="/adduser">Add User</a></h3>
+<div class="center">
+  <table style="width:80%">
+    <tr>
+      <th>Email</th>
+      <th>Roles</th>
+      <th>Projects</th>
+      <th></th>
+    </tr>
+      {{ range $i, $user := . }}
+    <tr>
+      <td>{{ $user.Email }}</td>
+      <td>
+        {{ range $i, $role := $user.Roles }}
+          {{ $role }}</br>
+        {{ end }}
+      </td>
+      <td>
+        {{ range $i, $project := $user.Projects }}
+          {{ $project.Name }}</br>
+        {{ end }}
+      </td>
+    <td><a href="/deleteuser/{{ $user.ID }}">remove</a></br></td>
+    {{ end }}
+  </table>
+</div>
+</body>
+</html>

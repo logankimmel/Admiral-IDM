@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -26,12 +28,28 @@ type (
 		Password string
 		Submit   string
 	}
+
+	project struct {
+		DocumentSelfLink string `json:"documentSelfLink"`
+		Name             string
+		Roles            []string
+		CustomProperties interface{} `json:"customProperties"`
+	}
+	user struct {
+		Roles    []string
+		Projects []project
+		ID       string
+		Name     string
+		Email    string
+		Type     string
+	}
 )
 
 var routes = routeSet{
 	route{"Admiral User Manager", "GET", "/", home},
 	route{"Admiral User Login", "GET", "/login", login},
 	route{"Auth", "POST", "/auth", auth},
+	route{"Users", "GET", "/user", listUsers},
 }
 
 func admiralEndpoint() string {
@@ -74,11 +92,12 @@ func logger(inner http.Handler, name string) http.Handler {
 	})
 }
 
-func home(w http.ResponseWriter, r *http.Request) {
-	success, err := checkSession(r)
+func checkSession(w http.ResponseWriter, r *http.Request) {
+	success, err := getSession(r)
 	if err != nil {
 		fmt.Println("Error validating session")
 		w.WriteHeader(500)
+		fmt.Fprint(w, "Error Validating Session")
 		return
 	}
 	if !success {
@@ -86,13 +105,17 @@ func home(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 	} else {
 		fmt.Println("Session valid")
-		f, _ := ioutil.ReadFile("views/index.html")
-		w.WriteHeader(200)
-		fmt.Fprintf(w, "%s", f)
 	}
 }
 
-func checkSession(r *http.Request) (bool, error) {
+func home(w http.ResponseWriter, r *http.Request) {
+	checkSession(w, r)
+	f, _ := ioutil.ReadFile("views/index.html")
+	w.WriteHeader(200)
+	fmt.Fprintf(w, "%s", f)
+}
+
+func getSession(r *http.Request) (bool, error) {
 	url := admiralEndpoint() + "/auth/session"
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
@@ -165,6 +188,50 @@ func getCookie(creds creds) (string, bool) {
 	}
 	cookie := response.Header.Get("Set-Cookie")
 	return cookie, true
+}
+
+func listUsers(w http.ResponseWriter, r *http.Request) {
+	url := admiralEndpoint() + "/auth/idm/principals?criteria=*&roles=all"
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		fmt.Println("Error creating the request")
+		fmt.Println(err)
+		w.WriteHeader(500)
+		return
+	}
+	for _, cookie := range r.Cookies() {
+		req.AddCookie(cookie)
+	}
+	response, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		fmt.Fprint(w, "Error Getting Users")
+		w.WriteHeader(500)
+		return
+	}
+	userList := []user{}
+	temp, _ := ioutil.ReadAll(response.Body)
+	err = json.Unmarshal(temp, &userList)
+	if err != nil {
+		fmt.Println("There was an error:", err)
+		w.WriteHeader(500)
+		fmt.Fprint(w, "Error Getting Users")
+		return
+	}
+	t, parseError := template.ParseFiles("views/users.html")
+	if parseError != nil {
+		fmt.Println(parseError)
+	}
+	var b bytes.Buffer
+	parseError = t.Execute(&b, userList)
+	if parseError != nil {
+		fmt.Println(parseError)
+		w.WriteHeader(500)
+		return
+	}
+	w.WriteHeader(200)
+	fmt.Fprintf(w, "%s", b.String())
 }
 
 func main() {
