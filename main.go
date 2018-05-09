@@ -157,19 +157,21 @@ func login(w http.ResponseWriter, r *http.Request) {
 }
 
 func logout(w http.ResponseWriter, r *http.Request) {
-	url := admiralEndpoint() + "/auth/session"
+	url := admiralEndpoint() + "/auth/session/logout"
 	client := &http.Client{}
-	req, _ := http.NewRequest("DELETE", url, nil)
+	req, _ := http.NewRequest("GET", url, nil)
 	for _, cookie := range r.Cookies() {
 		req.AddCookie(cookie)
 	}
-	_, err := client.Do(req)
+	response, err := client.Do(req)
 	if err != nil {
 		w.WriteHeader(500)
 		fmt.Println("Error signing out")
 		return
 	}
-	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+	cookie := response.Header.Get("set-cookie")
+	w.Header().Set("Set-Cookie", cookie)
+	login(w, r)
 }
 
 func auth(w http.ResponseWriter, r *http.Request) {
@@ -215,6 +217,7 @@ func getCookie(creds creds) (string, bool) {
 		fmt.Println(err)
 		return "", false
 	}
+	fmt.Println("Successfully logged in as: " + creds.Username)
 	cookie := response.Header.Get("Set-Cookie")
 	return cookie, true
 }
