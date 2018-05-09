@@ -374,7 +374,7 @@ func create(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	router := newRouter()
-	// router.PathPrefix("/assets").Handler(http.StripPrefix("/assets", http.FileServer(http.Dir("views/assets/"))))
+	router.PathPrefix("/assets").Handler(http.StripPrefix("/assets", http.FileServer(http.Dir("views/assets/"))))
 	fmt.Println("Listening on port 8080")
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
