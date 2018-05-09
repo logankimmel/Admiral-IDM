@@ -51,7 +51,16 @@ type (
 		Email    string
 		Type     string
 	}
+	alert struct {
+		Type    string
+		Message string
+	}
 )
+
+var alertColor = map[string]string{
+	"OK":  "#4CAF50",
+	"ERR": "#f44336",
+}
 
 var routes = routeSet{
 	route{"Admiral User Manager", "GET", "/", home},
@@ -122,10 +131,25 @@ func checkSession(w http.ResponseWriter, r *http.Request) {
 }
 
 func home(w http.ResponseWriter, r *http.Request) {
+	homeWithAlert(w, r, alert{})
+}
+
+func homeWithAlert(w http.ResponseWriter, r *http.Request, a alert) {
 	checkSession(w, r)
-	f, _ := ioutil.ReadFile("views/index.html")
+
+	t, parseError := template.ParseFiles("views/index.html")
+	if parseError != nil {
+		fmt.Println(parseError)
+	}
+	var b bytes.Buffer
+	parseError = t.Execute(&b, a)
+	if parseError != nil {
+		fmt.Println(parseError)
+		w.WriteHeader(500)
+		return
+	}
 	w.WriteHeader(200)
-	fmt.Fprintf(w, "%s", f)
+	fmt.Fprintf(w, "%s", b.String())
 }
 
 func getSession(r *http.Request) (bool, error) {
@@ -317,7 +341,11 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 		return
 	}
-	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+	a := alert{
+		Type:    alertColor["OK"],
+		Message: "User: " + id + " successfully deleted.",
+	}
+	homeWithAlert(w, r, a)
 }
 
 func createUser(w http.ResponseWriter, r *http.Request) {
@@ -363,13 +391,29 @@ func create(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Header.Add("Content-Type", "application/json")
 	response, err := client.Do(req)
-	if err != nil || response.StatusCode != 200 {
-		fmt.Println(err)
-		fmt.Fprint(w, "Error Creating User")
+	if err != nil {
 		w.WriteHeader(500)
+		e := alert{
+			Type:    alertColor["ERR"],
+			Message: "Error creating user, username: " + fData.Username + " previously existed in system.",
+		}
+		homeWithAlert(w, r, e)
 		return
 	}
-	home(w, r)
+	if response.StatusCode == 409 {
+		w.WriteHeader(409)
+		e := alert{
+			Type:    alertColor["ERR"],
+			Message: "Internal error creating user.",
+		}
+		homeWithAlert(w, r, e)
+		return
+	}
+	a := alert{
+		Type:    alertColor["OK"],
+		Message: "User: " + fData.Username + " successfully created",
+	}
+	homeWithAlert(w, r, a)
 }
 
 func main() {

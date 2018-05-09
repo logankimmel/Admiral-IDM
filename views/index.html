@@ -18,6 +18,11 @@ img {
     display: inline-block;
     text-align: left
 }
+.logout {
+  text-align: right;
+  padding-right: 1em;
+  padding-top: 1em;
+}
 input {
     margin-bottom: .5em;
     width: 15em;
@@ -25,11 +30,36 @@ input {
 p {
   font-style: italic;
 }
-
+.alert {
+    padding: 20px;
+    background-color: {{ .Type }};
+    opacity: 0.83;
+    color: white;
+}
+.closebtn {
+    margin-left: 15px;
+    color: white;
+    font-weight: bold;
+    float: right;
+    font-size: 22px;
+    line-height: 20px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+.closebtn:hover {
+    color: black;
+}
 </style>
 </head>
 <body>
-<img src="assets/admiral_logo.png" alt="Admiral Logo">
+{{ if .Message }}
+<div class="alert">
+  <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span>
+  {{ .Message }}
+</div>
+{{ end }}
+<p class="logout"><a href="/logout">Logout</a></p>
+<img src="/assets/admiral_logo.png" alt="Admiral Logo">
 <h1>Local User Manager</h1>
 <div class="center">
     <p>Note: This is only for the creation and deletion of Admiral Local Users.</br>
