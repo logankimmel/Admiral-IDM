@@ -71,6 +71,7 @@ var routes = routeSet{
 	route{"Delete User", "GET", "/deleteuser/{id}", deleteUser},
 	route{"Create User Form", "GET", "/createuser", createUser},
 	route{"Create User POST", "POST", "/create", create},
+	route{"Non-Admin User", "GET", "/nonadmin", nonAdmin},
 }
 
 func admiralEndpoint() string {
@@ -122,12 +123,16 @@ func checkSession(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Error Validating Session")
 		return
 	}
-	if !success {
+	switch success {
+	case "none":
 		fmt.Println("Session invalid. Redirecting to login")
 		http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
-	} else {
-		fmt.Println("Session valid")
+	case "non-admin":
+		fmt.Println("Authenticated as a non-admin user")
+		http.Redirect(w, r, "/nonadmin", http.StatusTemporaryRedirect)
 	}
+
+	fmt.Println("Session valid")
 }
 
 func home(w http.ResponseWriter, r *http.Request) {
@@ -152,14 +157,15 @@ func homeWithAlert(w http.ResponseWriter, r *http.Request, a alert) {
 	fmt.Fprintf(w, "%s", b.String())
 }
 
-func getSession(r *http.Request) (bool, error) {
+func getSession(r *http.Request) (string, error) {
+	none := "none"
 	url := admiralEndpoint() + "/auth/session"
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		fmt.Println("Error creating the request")
 		fmt.Println(err)
-		return false, err
+		return none, err
 	}
 	for _, cookie := range r.Cookies() {
 		req.AddCookie(cookie)
@@ -167,12 +173,32 @@ func getSession(r *http.Request) (bool, error) {
 	response, err := client.Do(req)
 	if err != nil {
 		fmt.Println(err)
-		return false, err
+		return none, err
 	}
 	if response.StatusCode == 200 {
-		return true, nil
+		u := user{}
+		temp, _ := ioutil.ReadAll(response.Body)
+		err = json.Unmarshal(temp, &u)
+		if err != nil {
+			fmt.Println(err)
+			return none, err
+		}
+		admin := checkForAdmin(u)
+		if !admin {
+			return "non-admin", nil
+		}
+		return "admin", nil
 	}
-	return false, nil
+	return none, nil
+}
+
+func checkForAdmin(u user) bool {
+	for _, role := range u.Roles {
+		if role == "CLOUD_ADMIN" {
+			return true
+		}
+	}
+	return false
 }
 
 func login(w http.ResponseWriter, r *http.Request) {
@@ -196,6 +222,11 @@ func logout(w http.ResponseWriter, r *http.Request) {
 	cookie := response.Header.Get("set-cookie")
 	w.Header().Set("Set-Cookie", cookie)
 	login(w, r)
+}
+
+func nonAdmin(w http.ResponseWriter, r *http.Request) {
+	f, _ := ioutil.ReadFile("views/nonadmin.html")
+	fmt.Fprintf(w, "%s", f)
 }
 
 func auth(w http.ResponseWriter, r *http.Request) {

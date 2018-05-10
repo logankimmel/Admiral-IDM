@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Logout</title>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+<style>
+img {
+    display: block;
+    margin: 0 auto;
+    width:30%;
+    height: auto;
+    padding-top: 2em;
+    padding-bottom: 2em;
+}
+.alert {
+    padding: 20px;
+    background-color: #f44336;
+    opacity: 0.83;
+    color: white;
+}
+.center { text-align: center}
+.closebtn {
+    margin-left: 15px;
+    color: white;
+    font-weight: bold;
+    float: right;
+    font-size: 22px;
+    line-height: 20px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+.closebtn:hover {
+    color: black;
+}
+</style>
+</head>
+<body>
+<div class="alert">
+  <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span>
+  Logged in as a non-admin user. Please log in with a CLOUD-ADMIN account.
+</div>
+<img src="assets/admiral_logo.png" alt="Admiral Logo">
+<div class="center">
+    <a href="/logout">logout</a>
+</div>
+</body>
+</html>
