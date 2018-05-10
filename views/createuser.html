@@ -2,22 +2,26 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Create User</title>
+<title>Admiral IDM</title>
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
 <script>
-var password = document.getElementById("password")
-  , confirm_password = document.getElementById("confirm");
+function checkPass()
+{
+    var pass1 = document.getElementById('password');
+    var pass2 = document.getElementById('confirm');
+    var sub = document.getElementById('submit')
 
-function validatePassword(){
-  if(password.value != confirm_password.value) {
-    confirm_password.setCustomValidity("Passwords Don't Match");
-  } else {
-    confirm_password.setCustomValidity('');
-  }
+    var goodColor = "#66cc66";
+    var badColor = "#ff6666";
+
+    if(pass1.value == pass2.value){
+        pass2.style.backgroundColor = goodColor;
+        sub.disabled = false
+    }else{
+        pass2.style.backgroundColor = badColor;
+        sub.disabled = true
+    }
 }
-
-password.onchange = validatePassword;
-confirm_password.onkeyup = validatePassword;
 </script>
 <style>
 h1 {text-align: center}
@@ -44,10 +48,10 @@ input {
     action="/create" >
         <input type="email" name="username" placeholder="Email" required><br>
         <input type="password" name="password" id="password" placeholder="Password" required><br>
-        <input type="password" name="confirm" placeholder="Confirm Password" id="confirm" required></br>
+        <input type="password" name="confirm" placeholder="Confirm Password" id="confirm" onkeyup="checkPass(); return false;" required></br>
         Cloud Admin: <input type="checkbox" name="isAdmin" value="true"><br>
         <br>
-        <input type="submit" name="submit" value="Submit" />
+        <input type="submit" id="submit" name="submit" value="Submit" />
       </br>
         <a href="/">cancel</a>
     </form>
