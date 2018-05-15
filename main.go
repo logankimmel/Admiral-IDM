@@ -357,7 +357,12 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	url := fmt.Sprintf("%s%s", admiralEndpoint(), linkPath)
-	req, _ := http.NewRequest("DELETE", url, nil)
+	jsonData := map[string]interface{}{
+		"email": id,
+		"documentExpirationTimeMicros": 1,
+	}
+	jsonValue, _ := json.Marshal(jsonData)
+	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(jsonValue))
 	for _, cookie := range r.Cookies() {
 		req.AddCookie(cookie)
 	}
@@ -426,7 +431,7 @@ func create(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 		e := alert{
 			Type:    alertColor["ERR"],
-			Message: "Error creating user, username: " + fData.Username + " previously existed in system.",
+			Message: "Internal error creating user.",
 		}
 		homeWithAlert(w, r, e)
 		return
@@ -435,7 +440,7 @@ func create(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(409)
 		e := alert{
 			Type:    alertColor["ERR"],
-			Message: "Internal error creating user.",
+			Message: "Error creating user, username: " + fData.Username + " previously existed in system.",
 		}
 		homeWithAlert(w, r, e)
 		return
